@@ -1,0 +1,188 @@
+FrameSimulationTrace:
+  title: Frame simulation trace
+  description: >-
+    Raw facts observed while executing each frame of a frame transaction, as
+    produced by the "frameTrace" tracer. The trace contains no verdicts: rules
+    that judge a trace (for example banned opcodes or storage access limits)
+    are defined by consumers, not by this specification.
+  type: object
+  required:
+    - frames
+  properties:
+    frames:
+      title: Frame traces
+      description: One entry per frame that ran, ordered by frameIndex.
+      type: array
+      items:
+        $ref: '#/components/schemas/FrameTrace'
+
+FrameTrace:
+  title: Frame trace
+  type: object
+  required:
+    - frameIndex
+    - root
+  properties:
+    frameIndex:
+      title: Frame index
+      description: Index into the transaction's frames array.
+      $ref: '#/components/schemas/uint'
+    root:
+      title: Root call frame
+      $ref: '#/components/schemas/CallFrame'
+
+CallType:
+  title: Call type
+  description: >-
+    The kind of scope a call frame represents. FRAME is the root scope of a
+    frame transaction frame.
+  type: string
+  enum:
+    - CALL
+    - CALLCODE
+    - DELEGATECALL
+    - STATICCALL
+    - CREATE
+    - CREATE2
+    - FRAME
+
+CallFrame:
+  title: Call frame
+  description: >-
+    One call scope. Storage maps in accessedSlots refer to the storage context
+    of this scope: the callee address, or the caller for DELEGATECALL and
+    CALLCODE.
+  type: object
+  required:
+    - from
+    - to
+    - type
+    - value
+    - calls
+    - accessedSlots
+    - extCodeAccessInfo
+    - usedOpcodes
+    - contractSize
+    - outOfGas
+  properties:
+    from:
+      title: Caller address
+      $ref: '#/components/schemas/address'
+    to:
+      title: Callee address
+      description: Never null. A null target is a client bug, not a valid state.
+      $ref: '#/components/schemas/address'
+    type:
+      title: Call type
+      $ref: '#/components/schemas/CallType'
+    value:
+      title: Value
+      description: >-
+        Value sent by the opening CALL-family opcode. Zero for STATICCALL and
+        for FRAME roots.
+      $ref: '#/components/schemas/uint256'
+    calls:
+      title: Nested call frames
+      description: >-
+        Nested scopes in execution order, each a CallFrame. Always present, empty if none.
+        Not referenced as $ref because specgen cannot dereference recursive schemas.
+      type: array
+      items:
+        type: object
+    accessedSlots:
+      title: Accessed storage slots
+      $ref: '#/components/schemas/AccessedSlots'
+    extCodeAccessInfo:
+      title: External code accesses
+      description: Addresses whose code was read by EXTCODE* opcodes.
+      type: array
+      items:
+        $ref: '#/components/schemas/address'
+    usedOpcodes:
+      title: Used opcodes
+      description: >-
+        Map from opcode byte (hex string, for example "0x31") to the number of
+        times it executed in this scope. Always present, empty if none.
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/uint'
+    contractSize:
+      title: Contract sizes
+      description: >-
+        Map from address to size information for each contract whose code was
+        executed or inspected in this scope. Always present, empty if none.
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/ContractSize'
+    outOfGas:
+      title: Out of gas
+      description: True if this scope ran out of gas.
+      type: boolean
+    keccak:
+      title: Keccak preimages
+      description: >-
+        Keccak preimages observed up to the close of this scope. Accumulates
+        across the whole transaction: the last FrameTrace carries the
+        transaction-wide set. Always present, empty if none.
+      type: array
+      items:
+        $ref: '#/components/schemas/bytes'
+
+AccessedSlots:
+  title: Accessed storage slots
+  description: >-
+    Slot-keyed maps for the storage context of one call scope. All four maps
+    are always present, possibly empty. Keys are storage slots. Values differ by
+    map: reads holds the pre-state value recorded at first touch, while the
+    other three hold counts.
+  type: object
+  required:
+    - reads
+    - writes
+    - transientReads
+    - transientWrites
+  properties:
+    reads:
+      title: Reads
+      description: >-
+        Map from slot to a list of pre-state values. A slot is recorded only at
+        its first touch, by a read or a write, so each list has at most one
+        element.
+      type: object
+      additionalProperties:
+        type: array
+        items:
+          $ref: '#/components/schemas/hash32'
+    writes:
+      title: Writes
+      description: Map from slot to the number of SSTORE executions on it.
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/uint'
+    transientReads:
+      title: Transient reads
+      description: Map from slot to the number of TLOAD executions on it.
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/uint'
+    transientWrites:
+      title: Transient writes
+      description: Map from slot to the number of TSTORE executions on it.
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/uint'
+
+ContractSize:
+  title: Contract size
+  type: object
+  required:
+    - contractSize
+    - opcode
+  properties:
+    contractSize:
+      title: Code size in bytes
+      $ref: '#/components/schemas/uint'
+    opcode:
+      title: Opcode that inspected the contract
+      description: The opcode byte that caused the code to be inspected, as a hex string.
+      $ref: '#/components/schemas/byte'

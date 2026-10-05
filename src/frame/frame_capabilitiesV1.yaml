@@ -1,0 +1,73 @@
+- name: frame_capabilitiesV1
+  summary: Negotiates the frame transaction methods and tracers supported by the client. Authenticated.
+  description: |
+    Lets a sidecar discover what the client implements before using it, following the same pattern
+    as `engine_exchangeCapabilities`.
+
+    **Transport and authentication:**
+    - This method MUST be served only on the authenticated endpoint. See
+      [authentication.md](../engine/authentication.md).
+
+    **Specification:**
+    - The client MUST return every frame method version it implements, even those the caller did
+      not list.
+    - The client MUST ignore entries in the request that it does not recognize.
+    - Callers MUST NOT use a method that is absent from the returned list. A caller that requires a
+      method and does not find it SHOULD refuse to start the privileged submission flow.
+  params:
+    - name: Supported versions
+      required: true
+      description: Method versions the caller implements, for example "frame_sendPrivilegedTransactionV1".
+      schema:
+        title: Supported versions
+        type: array
+        items:
+          type: string
+  result:
+    name: Capabilities
+    schema:
+      title: Capabilities
+      type: object
+      required:
+        - supportedVersions
+        - tracers
+        - reasonCodesVersion
+      properties:
+        supportedVersions:
+          title: Supported method versions
+          type: array
+          items:
+            type: string
+        tracers:
+          title: Supported tracers
+          description: Tracer names accepted by frame_simulateTransactionV1, for example "frameTrace".
+          type: array
+          items:
+            type: string
+        reasonCodesVersion:
+          title: Reason codes version
+          description: Version of the frame errors group the client implements.
+          type: string
+  errors:
+    - code: -32602
+      message: Invalid parameters
+    - code: -32603
+      message: Internal error
+  examples:
+    - name: frame_capabilitiesV1 example
+      params:
+        - name: Supported versions
+          value:
+            - frame_simulateTransactionV1
+            - frame_sendPrivilegedTransactionV1
+            - frame_capabilitiesV1
+      result:
+        name: Capabilities
+        value:
+          supportedVersions:
+            - frame_simulateTransactionV1
+            - frame_sendPrivilegedTransactionV1
+            - frame_capabilitiesV1
+          tracers:
+            - frameTrace
+          reasonCodesVersion: '1'

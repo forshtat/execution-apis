@@ -1,0 +1,139 @@
+- name: frame_simulateTransactionV1
+  summary: Simulates a frame transaction against a block without admitting, queueing, or gossiping it.
+  description: |
+    Reports what would happen if the given frame transaction were submitted to this node now.
+    This method is read-only and is safe to expose on public RPC endpoints.
+
+    **Specification:**
+    - The client MUST execute the transaction against the state at `blockTag` and MUST NOT change
+      state or its transaction pool.
+    - Execution and admission MUST be reported independently. A transaction can execute
+      successfully and still be inadmissible under the client's own policy.
+    - `admission` reflects the client's local mempool policy. The policy rules are client-defined.
+      Only the shape of the verdict and the reason codes are standardized.
+    - If `options.tracer` is set, the client MUST return `trace` in the `frameTrace` format. If it is
+      unset, `trace` MUST be absent.
+    - Callers MUST tolerate reason codes they do not recognize.
+
+    **Security considerations:**
+    - Simulation consumes node resources. Rate limiting and per-caller quotas are the RPC provider's
+      responsibility and are out of scope for this specification.
+  params:
+    - name: Raw transaction
+      required: true
+      description: The EIP-2718 encoded frame transaction (type 0x06).
+      schema:
+        $ref: '#/components/schemas/bytes'
+    - name: Block tag
+      required: false
+      description: The block whose state the simulation runs against. Defaults to `latest`.
+      schema:
+        $ref: '#/components/schemas/BlockNumberOrTag'
+    - name: Options
+      required: false
+      description: Optional simulation options.
+      schema:
+        title: Simulation options
+        type: object
+        properties:
+          tracer:
+            title: Tracer
+            description: Name of the tracer to run. The only tracer defined by this specification is "frameTrace".
+            type: string
+  result:
+    name: Simulation result
+    schema:
+      title: Simulation result
+      type: object
+      required:
+        - execution
+        - admission
+      properties:
+        execution:
+          title: Execution result
+          type: object
+          required:
+            - status
+            - frames
+          properties:
+            status:
+              title: Status
+              description: >-
+                "success" if every frame succeeded, "reverted" if a frame reverted, and "invalid"
+                if the transaction cannot be executed at all.
+              type: string
+              enum:
+                - success
+                - reverted
+                - invalid
+            gasUsed:
+              title: Gas used
+              description: Total gas used across all frames. Absent when status is "invalid".
+              $ref: '#/components/schemas/uint'
+            frames:
+              title: Frame results
+              type: array
+              items:
+                type: object
+                required:
+                  - status
+                properties:
+                  status:
+                    title: Frame status
+                    type: string
+                    enum:
+                      - success
+                      - reverted
+                      - not-run
+                  gasUsed:
+                    $ref: '#/components/schemas/uint'
+                  returnData:
+                    $ref: '#/components/schemas/bytes'
+            error:
+              title: Error code
+              description: Reason code from the frame errors group. Present when status is "invalid".
+              type: integer
+        admission:
+          title: Admission verdict
+          type: object
+          required:
+            - admissible
+          properties:
+            admissible:
+              title: Admissible
+              description: Whether this client's own mempool policy would accept the transaction.
+              type: boolean
+            reason:
+              title: Reason code
+              description: Reason code from the frame errors group. Present when admissible is false.
+              type: integer
+        trace:
+          title: Frame simulation trace
+          description: Present only when options.tracer is set.
+          $ref: '#/components/schemas/FrameSimulationTrace'
+  errors:
+    - code: -32602
+      message: Invalid parameters
+    - code: -32603
+      message: Internal error
+    - code: 1206
+      message: Unsupported tracer
+  examples:
+    - name: frame_simulateTransactionV1 example
+      params:
+        - name: Raw transaction
+          value: '0x06c0'
+        - name: Block tag
+          value: latest
+      result:
+        name: Simulation result
+        value:
+          execution:
+            status: success
+            gasUsed: '0x5208'
+            frames:
+              - status: success
+                gasUsed: '0x5208'
+                returnData: '0x'
+          admission:
+            admissible: true

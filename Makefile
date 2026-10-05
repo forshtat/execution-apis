@@ -7,6 +7,7 @@ SPECFLAGS := -schemas 'src/schemas' \
 	-methods 'src/txpool' \
 	-methods 'src/engine/openrpc/methods' \
 	-methods 'src/testing' \
+	-methods 'src/frame' \
 	-error-groups 'src/error-groups'
 
 
