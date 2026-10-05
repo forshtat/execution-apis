@@ -1,0 +1,58 @@
+- name: frame_sendPrivilegedTransactionV1
+  summary: Queues a frame transaction for block building, bypassing gossip. Authenticated.
+  description: |
+    Hands a frame transaction to the node's local block builder. Intended for the operator of the
+    node, typically a sidecar service such as a bundler.
+
+    **Transport and authentication:**
+    - This method MUST be served only on the authenticated endpoint, separate from the public RPC
+      port. Authentication follows the Engine API JWT scheme in
+      [authentication.md](../engine/authentication.md).
+    - Clients SHOULD disable this method by default.
+    - This method MUST NOT be exposed on public-facing RPC endpoints.
+
+    **Specification:**
+    - The client MUST validate the transaction with the same execution checks as
+      `frame_simulateTransactionV1`. If execution status is "invalid", the client MUST reject the
+      request with the corresponding reason code.
+    - The client MAY bypass its admission policy for privileged submissions. It MUST document that
+      it does so, and MUST NOT skip any execution check.
+    - Submission is idempotent. Resubmitting the same raw transaction MUST return the same hash and
+      MUST NOT queue it twice.
+    - Acceptance does not guarantee inclusion. Callers SHOULD track the transaction with
+      `eth_getTransactionReceipt`.
+    - The client MUST NOT gossip a privileged submission to peers unless its own policy requires it.
+  params:
+    - name: Raw transaction
+      required: true
+      description: The EIP-2718 encoded frame transaction (type 0x06).
+      schema:
+        $ref: '#/components/schemas/bytes'
+  result:
+    name: Transaction hash
+    schema:
+      title: Transaction hash
+      $ref: '#/components/schemas/hash32'
+  errors:
+    - code: -32602
+      message: Invalid parameters
+    - code: -32603
+      message: Internal error
+    - code: 1200
+      message: Invalid frame transaction
+    - code: 1201
+      message: Invalid frame transaction signature
+    - code: 1202
+      message: Insufficient balance for frame transaction
+    - code: 1203
+      message: Nonce mismatch
+    - code: 1204
+      message: No frame approved payment
+  examples:
+    - name: frame_sendPrivilegedTransactionV1 example
+      params:
+        - name: Raw transaction
+          value: '0x06c0'
+      result:
+        name: Transaction hash
+        value: '0x1234567890123456789012345678901234567890123456789012345678901234'

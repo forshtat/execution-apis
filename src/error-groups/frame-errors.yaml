@@ -1,0 +1,19 @@
+FrameErrors:
+  range:
+    min: 1200
+    max: 1299
+  errors:
+    - code: 1200
+      message: "Invalid frame transaction"
+    - code: 1201
+      message: "Invalid frame transaction signature"
+    - code: 1202
+      message: "Insufficient balance for frame transaction"
+    - code: 1203
+      message: "Nonce mismatch"
+    - code: 1204
+      message: "No frame approved payment"
+    - code: 1205
+      message: "Rejected by admission policy"
+    - code: 1206
+      message: "Unsupported tracer"
